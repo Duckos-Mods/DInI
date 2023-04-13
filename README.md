@@ -1,5 +1,5 @@
 # DInI
-DInI is a header only C++ ini parsing lib and is meant to make parsing ini files easy \n
+DInI is a header only C++ ini parsing lib and is meant to make parsing ini files easy 
 
 # Docs
 
