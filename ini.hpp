@@ -33,7 +33,7 @@ namespace DInI
 {
 	#define DAPI inline
 	/// <summary>
-	/// Loads An Ini file from a path ONLY supports loading the ini for a std::string path might add support for ofstreams and .open later
+	/// Loads An Ini file from a path ONLY supports loading the ini for a std::string path might add support for ofstreams
 	/// </summary>
 	class ini
 	{
@@ -48,6 +48,21 @@ namespace DInI
 			}
 		}
 		ini() {}
+		/// <summary>
+		/// Opens the specified file
+		/// </summary>
+		/// <param name="FilePath"></param>
+		/// <returns></returns>
+		DAPI void open(std::string FilePath)
+		{
+
+			_filePath = FilePath;
+			_iniFile.open(FilePath);
+
+			if (!_iniFile) {
+				throw std::runtime_error("Failed to open file: " + FilePath);
+			}
+		}
 
 		/// <summary>
 		/// Make sure to call this function before trying to do anything like get set or save because this gets the data from the ini file and sorts it
