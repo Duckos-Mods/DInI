@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <sstream>
 #include <iostream>
+#include <tuple>
 
 /*
 * Made by Duckos Mods
@@ -33,6 +34,12 @@
 namespace DInI
 {
 	#define DAPI inline
+
+	struct InISection
+	{
+		std::string sectionName = "Section";
+		std::unordered_map<std::string, std::string> sectionData;
+	};
 	/// <summary>
 	/// Loads An Ini file from a path ONLY supports loading the ini for a std::string path might add support for ofstreams
 	/// </summary>
@@ -95,7 +102,20 @@ namespace DInI
 					if (lastNonSpaceIndex != std::string::npos) {
 						trimmedKey = trimmedKey.substr(0, lastNonSpaceIndex + 1);
 					}
-					_sections[SectionName][trimmedKey] = value;
+					if (updatedSections.count(SectionName) == 0)
+					{
+						InISection loadedInIData;
+						loadedInIData.sectionName = SectionName;
+						loadedInIData.sectionData[trimmedKey] = value;
+
+						updatedSections[SectionName] = loadedInIData;
+					}
+					else
+					{
+						// Doing it with pointers because i was testing a bug but it is more memory efficent to do it this way anyway 
+						InISection* loadedInIData = &updatedSections[SectionName];
+						loadedInIData->sectionData[trimmedKey] = value;
+					}
 				}
 
 			}
@@ -109,13 +129,13 @@ namespace DInI
 		/// <returns></returns>
 		DAPI const std::string& get(std::string SectionName, std::string key)
 		{
-			if (_sections.count(SectionName) == 0) {
+			if (updatedSections.count(SectionName) == 0) {
 				throw std::runtime_error("Section not found: " + SectionName);
 			}
-			if (_sections.at(SectionName).count(key) == 0) {
+			if (updatedSections.at(SectionName).sectionData.count(key) == 0) {
 				throw std::runtime_error("Key not found: " + key);
 			}
-			return _sections.at(SectionName).at(key);
+			return updatedSections.at(SectionName).sectionData.at(key);
 		}
 
 		/// <summary>
@@ -126,7 +146,7 @@ namespace DInI
 		/// <param name="value"></param>
 		/// <returns></returns>
 		DAPI void set(const std::string& SectionName, const std::string& key, const std::string& value) {
-			_sections[SectionName][key] = value;
+			updatedSections[SectionName].sectionData[key] = value;
 		}
 
 		/// <summary>
@@ -141,9 +161,9 @@ namespace DInI
 			if (!file) {
 				throw std::runtime_error("Failed to open file: " + _filePath);
 			}
-			for (const auto& [SectionName, section_data] : _sections) {
+			for (const auto& [SectionName, section_data] : updatedSections) {
 				file << "[" << SectionName << "]\n";
-				for (const auto& [key, value] : section_data) {
+				for (const auto& [key, value] : section_data.sectionData) {
 					file << key << "=" << value << "\n";
 				}
 				file << "\n";
@@ -157,9 +177,9 @@ namespace DInI
 			if (!file) {
 				throw std::runtime_error("Failed to open file: " + Path);
 			}
-			for (const auto& [SectionName, section_data] : _sections) {
+			for (const auto& [SectionName, section_data] : updatedSections) {
 				file << "[" << SectionName << "]\n";
-				for (const auto& [key, value] : section_data) {
+				for (const auto& [key, value] : section_data.sectionData) {
 					file << key << "=" << value << "\n";
 				}
 				file << "\n";
@@ -173,11 +193,12 @@ namespace DInI
 		/// <returns></returns>
 		DAPI void dump()
 		{
-			for (const auto& section : _sections) {
-				std::cout << "[" << section.first << "]\n";
-				for (const auto& keyValuePair : section.second) {
-					std::cout << keyValuePair.first << " = " << keyValuePair.second << "\n";
+			for (const auto& [SectionName, section_data] : updatedSections) {
+				std::cout << "[" << SectionName << "]\n";
+				for (const auto& [key, value] : section_data.sectionData) {
+					std::cout << key << " = " << value << "\n";
 				}
+				std::cout << "\n";
 			}
 		}
 
@@ -185,14 +206,14 @@ namespace DInI
 		/// Returns the whole ini file as it is stored in memory. Only should be used if you know what your doing. Note also copies the file so is slow
 		/// </summary>
 		/// <returns></returns>
-		DAPI std::unordered_map<std::string, std::unordered_map<std::string, std::string>> Sections()
+		DAPI std::unordered_map<std::string, DInI::InISection> Sections()
 		{
-			return _sections;
+			return updatedSections;
 		}
 
+		std::unordered_map<std::string, DInI::InISection> updatedSections;
 	private:
 		std::ifstream _iniFile;
 		std::string _filePath;
-		std::unordered_map<std::string, std::unordered_map<std::string, std::string>> _sections;
 	};
 }
