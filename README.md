@@ -2,10 +2,10 @@
 DInI is a header only C++ ini parsing lib and is meant to make parsing ini files easy 
 
 # DInI Features
-  .Saving To An InI File
-  .Loading From An InI File
-  .Comment Support (with the / or #)
-  .Array Support
+  .Saving To An InI File  
+  .Loading From An InI File  
+  .Comment Support (with the / or #)  
+  .Array Support  
 # Docs
 
 ```cpp
