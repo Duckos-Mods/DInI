@@ -6,6 +6,9 @@
 #include <sstream>
 #include <iostream>
 #include <tuple>
+#include <variant>
+#include <type_traits>
+
 
 /*
 * Made by Duckos Mods
@@ -34,14 +37,29 @@
 namespace DInI
 {
 	#define DAPI inline
-
+	namespace StringUtil
+	{
+		DAPI std::vector< std::string > explode(const std::string& data, const std::string& delimiters) {
+			auto is_delim = [&](auto& c) { return delimiters.find(c) != std::string::npos; };
+			std::vector< std::string > result;
+			for (std::string::size_type i(0), len(data.length()), pos(0); i <= len; i++) {
+				if (is_delim(data[i]) || i == len) {
+					auto tok = data.substr(pos, i - pos);
+					tok.erase(std::remove_if(tok.begin(), tok.end(), isspace), tok.end());
+					if (!tok.empty())
+						result.push_back(tok);
+					pos = i + 1;
+				}
+			} return result;
+		}
+	}
 	struct InISection
 	{
 		std::string sectionName = "Section";
-		std::unordered_map<std::string, std::string> sectionData;
+		std::unordered_map<std::string, std::variant<std::string, std::vector<std::string>>> sectionData;
 	};
 	/// <summary>
-	/// Loads An Ini file from a path ONLY supports loading the ini for a std::string path might add support for ofstreams
+	/// Loads An Ini file from a path
 	/// </summary>
 	class ini
 	{
@@ -54,6 +72,7 @@ namespace DInI
 			if (!_iniFile) {
 				throw std::runtime_error("Failed to open file: " + FilePath);
 			}
+			parseFile();
 		}
 		ini() {}
 		/// <summary>
@@ -73,7 +92,7 @@ namespace DInI
 		}
 
 		/// <summary>
-		/// Make sure to call this function before trying to do anything like get set or save because this gets the data from the ini file and sorts it
+		/// Make sure to call this function if you used the open function before trying to do anything like get set or save because this gets the data from the ini file and sorts it
 		/// </summary>
 		/// <returns></returns>
 		DAPI void parseFile()
@@ -87,7 +106,7 @@ namespace DInI
 					continue;
 				}
 
-				if (Line[0] == '[' || Line.back() == ']')
+				if (Line[0] == '[' && Line.back() == ']')
 				{
 					SectionName = Line.substr(1, Line.size() - 2);
 					continue;
@@ -102,19 +121,49 @@ namespace DInI
 					if (lastNonSpaceIndex != std::string::npos) {
 						trimmedKey = trimmedKey.substr(0, lastNonSpaceIndex + 1);
 					}
-					if (updatedSections.count(SectionName) == 0)
+					bool Array;
+					if (value[0] == '[' && value.back() == ']')
 					{
-						InISection loadedInIData;
-						loadedInIData.sectionName = SectionName;
-						loadedInIData.sectionData[trimmedKey] = value;
-
-						updatedSections[SectionName] = loadedInIData;
+						Array = true;
 					}
 					else
 					{
-						// Doing it with pointers because i was testing a bug but it is more memory efficent to do it this way anyway 
-						InISection* loadedInIData = &updatedSections[SectionName];
-						loadedInIData->sectionData[trimmedKey] = value;
+						Array = false;
+					}
+
+					if (updatedSections.count(SectionName) == 0)
+					{
+						if (!Array)
+						{
+							InISection loadedInIData;
+							loadedInIData.sectionName = SectionName;
+							loadedInIData.sectionData[trimmedKey] = value;
+							updatedSections[SectionName] = loadedInIData;
+						}
+						else
+						{
+							std::string FullArrayString = value.substr(1, value.size() - 2);
+							InISection loadedInIData;
+							loadedInIData.sectionName = SectionName;
+							loadedInIData.sectionData[trimmedKey] = StringUtil::explode(FullArrayString, ",");
+							updatedSections[SectionName] = loadedInIData;
+						}
+					}
+					else
+					{
+						if (!Array)
+						{
+
+							// Doing it with pointers because i was testing a bug but it is more memory efficent to do it this way anyway 
+							InISection* loadedInIData = &updatedSections[SectionName];
+							loadedInIData->sectionData[trimmedKey] = value;
+						}
+						else
+						{
+							std::string FullArrayString = value.substr(1, value.size() - 2);
+							InISection* loadedInIData = &updatedSections[SectionName];
+							loadedInIData->sectionData[trimmedKey] = StringUtil::explode(FullArrayString, ",");
+						}
 					}
 				}
 
@@ -122,12 +171,12 @@ namespace DInI
 		}
 
 		/// <summary>
-		/// Returns as a string the value the given Section and key. 
+		/// Returns A std::variant only use if you dont know the type of the key and need to get it at run time. Else use the stringGet function and vectorGet
 		/// </summary>
 		/// <param name="SectionName"></param>
 		/// <param name="key"></param>
 		/// <returns></returns>
-		DAPI const std::string& get(std::string SectionName, std::string key)
+		DAPI const std::variant<std::string, std::vector<std::string>> get(std::string SectionName, std::string key)
 		{
 			if (updatedSections.count(SectionName) == 0) {
 				throw std::runtime_error("Section not found: " + SectionName);
@@ -136,6 +185,26 @@ namespace DInI
 				throw std::runtime_error("Key not found: " + key);
 			}
 			return updatedSections.at(SectionName).sectionData.at(key);
+		}
+		DAPI const std::string stringGet(std::string SectionName, std::string key)
+		{
+			if (updatedSections.count(SectionName) == 0) {
+				throw std::runtime_error("Section not found: " + SectionName);
+			}
+			if (updatedSections.at(SectionName).sectionData.count(key) == 0) {
+				throw std::runtime_error("Key not found: " + key);
+			}
+			return std::get<std::string>(updatedSections.at(SectionName).sectionData.at(key));
+		}
+		DAPI const std::vector<std::string> vectorGet(std::string SectionName, std::string key)
+		{
+			if (updatedSections.count(SectionName) == 0) {
+				throw std::runtime_error("Section not found: " + SectionName);
+			}
+			if (updatedSections.at(SectionName).sectionData.count(key) == 0) {
+				throw std::runtime_error("Key not found: " + key);
+			}
+			return std::get<std::vector<std::string>>(updatedSections.at(SectionName).sectionData.at(key));
 		}
 
 		/// <summary>
@@ -146,6 +215,17 @@ namespace DInI
 		/// <param name="value"></param>
 		/// <returns></returns>
 		DAPI void set(const std::string& SectionName, const std::string& key, const std::string& value) {
+			updatedSections[SectionName].sectionData[key] = value;
+		}
+
+		/// <summary>
+		/// Changes the Value at the given Section and Key
+		/// </summary>
+		/// <param name="SectionName"></param>
+		/// <param name="key"></param>
+		/// <param name="value"></param>
+		/// <returns></returns>
+		DAPI void set(const std::string& SectionName, const std::string& key, const std::vector<std::string> value) {
 			updatedSections[SectionName].sectionData[key] = value;
 		}
 
@@ -161,15 +241,40 @@ namespace DInI
 			if (!file) {
 				throw std::runtime_error("Failed to open file: " + _filePath);
 			}
-			for (const auto& [SectionName, section_data] : updatedSections) {
+			for (auto& [SectionName, sectionData] : updatedSections) {
 				file << "[" << SectionName << "]\n";
-				for (const auto& [key, value] : section_data.sectionData) {
-					file << key << "=" << value << "\n";
-				}
-				file << "\n";
-			}
-		}
+				for (auto& [Key, Val] : sectionData.sectionData)
+				{
+					file << Key << " = ";
+					std::visit
+					(
+						[&](auto&& arg)
+						{
 
+							if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::string>) {
+								file << arg << '\n';
+							}
+							else {
+								file << "[";/*
+								for (std::string& str : arg) {
+									std::cout << str << ', ';
+								}*/
+
+								for (auto it = arg.begin(); it != arg.end(); ++it) {
+									file << *it;
+									if (it + 1 != arg.end()) {
+										file << ", ";
+									}
+								}
+								file << "]\n";
+							}
+						}
+					, Val);
+				}
+			}
+			file.close();
+		}
+		
 		DAPI void save(std::string Path) const
 		{
 
@@ -177,13 +282,36 @@ namespace DInI
 			if (!file) {
 				throw std::runtime_error("Failed to open file: " + Path);
 			}
-			for (const auto& [SectionName, section_data] : updatedSections) {
+			
+			for (auto& [SectionName, sectionData] : updatedSections) {
 				file << "[" << SectionName << "]\n";
-				for (const auto& [key, value] : section_data.sectionData) {
-					file << key << "=" << value << "\n";
+				for (auto& [Key, Val] : sectionData.sectionData)
+				{
+					file << Key << " = ";
+					std::visit
+					(
+						[&](auto&& arg)
+						{
+
+							if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::string>) {
+								file << arg << '\n';
+							}
+							else {
+								file << "[";
+
+								for (auto it = arg.begin(); it != arg.end(); ++it) {
+									file << *it;
+									if (it + 1 != arg.end()) {
+										file << ", ";
+									}
+								}
+								file << "]\n";
+							}
+						}
+					, Val);
 				}
-				file << "\n";
 			}
+			file.close();
 		}
 
 
@@ -193,12 +321,34 @@ namespace DInI
 		/// <returns></returns>
 		DAPI void dump()
 		{
-			for (const auto& [SectionName, section_data] : updatedSections) {
+			for (auto& [SectionName, sectionData] : updatedSections) {
 				std::cout << "[" << SectionName << "]\n";
-				for (const auto& [key, value] : section_data.sectionData) {
-					std::cout << key << " = " << value << "\n";
+				for (auto& [Key, Val] : sectionData.sectionData)
+				{
+					std::cout << Key << " = ";
+					std::visit
+					(
+						[](auto&& arg)
+						{
+
+							if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::string>) {
+								std::cout << arg << '\n';
+							}
+							else {
+								std::cout << "[";
+								for (auto it = arg.begin(); it != arg.end(); ++it) {
+									std::cout << *it;
+									if (it + 1 != arg.end()) {
+										std::cout << ", ";
+									}
+								}
+								std::cout << "]\n";
+							}
+						}
+					, Val); 
+					/*
+					}*/
 				}
-				std::cout << "\n";
 			}
 		}
 
@@ -206,14 +356,22 @@ namespace DInI
 		/// Returns the whole ini file as it is stored in memory. Only should be used if you know what your doing. Note also copies the file so is slow
 		/// </summary>
 		/// <returns></returns>
-		DAPI std::unordered_map<std::string, DInI::InISection> Sections()
+		DAPI std::unordered_map<std::string, DInI::InISection> sectionsC()
 		{
 			return updatedSections;
 		}
 
-		std::unordered_map<std::string, DInI::InISection> updatedSections;
+		/// <summary>
+		/// Returns the whole ini file as it is stored in memory. Only should be used if you know what your doing
+		/// </summary>
+		/// <returns></returns>
+		DAPI std::unordered_map<std::string, DInI::InISection>* sectionsP()
+		{
+			return &updatedSections;
+		}
+        std::unordered_map<std::string, DInI::InISection> updatedSections;
 	private:
-		std::ifstream _iniFile;
+		std::fstream _iniFile;
 		std::string _filePath;
 	};
 }
