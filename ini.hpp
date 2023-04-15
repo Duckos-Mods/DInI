@@ -176,7 +176,7 @@ namespace DInI
 		/// <param name="SectionName"></param>
 		/// <param name="key"></param>
 		/// <returns></returns>
-		DAPI const std::variant<std::string, std::vector<std::string>> get(std::string SectionName, std::string key)
+		DAPI const std::variant<std::string, std::vector<std::string>>& get(std::string SectionName, std::string key)
 		{
 			if (updatedSections.count(SectionName) == 0) {
 				throw std::runtime_error("Section not found: " + SectionName);
@@ -186,7 +186,7 @@ namespace DInI
 			}
 			return updatedSections.at(SectionName).sectionData.at(key);
 		}
-		DAPI const std::string stringGet(std::string SectionName, std::string key)
+		DAPI const std::string& stringGet(std::string SectionName, std::string key)
 		{
 			if (updatedSections.count(SectionName) == 0) {
 				throw std::runtime_error("Section not found: " + SectionName);
@@ -196,7 +196,7 @@ namespace DInI
 			}
 			return std::get<std::string>(updatedSections.at(SectionName).sectionData.at(key));
 		}
-		DAPI const std::vector<std::string> vectorGet(std::string SectionName, std::string key)
+		DAPI const std::vector<std::string>& vectorGet(std::string SectionName, std::string key)
 		{
 			if (updatedSections.count(SectionName) == 0) {
 				throw std::runtime_error("Section not found: " + SectionName);
