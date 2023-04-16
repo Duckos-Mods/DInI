@@ -11,10 +11,7 @@
 
 
 /*
- * Made by Duckos Mods
- *
- * Feel free to do what you want with this just credit me when using it
- *
+ *  Made by Duckos Mods
  *
  *  LICENSE: zlib/libpng
  *
@@ -315,8 +312,6 @@ namespace DInI {
                                   std::cout << "]\n";
                               }
                           }, Val);
-                      /*
-                      }*/
                   }
               }
           }
