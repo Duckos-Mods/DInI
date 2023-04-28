@@ -158,8 +158,7 @@ namespace DInI {
           /// <param name="SectionName"></param>
           /// <param name="key"></param>
           /// <returns></returns>
-          DAPI
-              const std::variant < std::string, std::vector < std::string >>& get(std::string SectionName, std::string key) {
+          DAPI const std::variant <std::string, std::vector <std::string>>& get(std::string SectionName, std::string key) {
               if (updatedSections.count(SectionName) == 0) {
                   throw std::runtime_error("Section not found: " + SectionName);
               }
@@ -168,8 +167,7 @@ namespace DInI {
               }
               return updatedSections.at(SectionName).sectionData.at(key);
           }
-          DAPI
-              const std::string& stringGet(std::string SectionName, std::string key) {
+          DAPI const std::string& stringGet(std::string SectionName, std::string key) {
               if (updatedSections.count(SectionName) == 0) {
                   throw std::runtime_error("Section not found: " + SectionName);
               }
@@ -178,8 +176,7 @@ namespace DInI {
               }
               return std::get < std::string >(updatedSections.at(SectionName).sectionData.at(key));
           }
-          DAPI
-              const std::vector < std::string >& vectorGet(std::string SectionName, std::string key) {
+          DAPI const std::vector <std::string>& vectorGet(std::string SectionName, std::string key) {
               if (updatedSections.count(SectionName) == 0) {
                   throw std::runtime_error("Section not found: " + SectionName);
               }
@@ -333,8 +330,41 @@ namespace DInI {
               DInI::InISection >* sectionsP() {
               return &updatedSections;
           }
-          std::unordered_map < std::string,
-              DInI::InISection > updatedSections;
+
+          /// <summary>
+          /// Returns the ini file as a string
+          /// </summary>
+          DAPI std::string iniToString()
+          {
+              std::string returnString = "";
+              for (auto& [SectionName, sectionData] : updatedSections) {
+                  returnString += "\n[" + SectionName + "]\n";
+                  for (auto& [Key, Val] : sectionData.sectionData) {
+                      returnString += Key + " = ";
+                      std::visit(
+                          [&returnString](auto&& arg) {
+
+                              if constexpr (std::is_same_v < std::decay_t < decltype(arg) >, std::string >) {
+                                  returnString += arg + '\n';
+                              }
+                              else {
+                                  returnString += "[";
+                                  for (auto it = arg.begin(); it != arg.end(); ++it) {
+                                      returnString += *it;
+                                      if (it + 1 != arg.end()) {
+                                          returnString += ", ";
+                                      }
+                                  }
+                                  returnString += "]\n";
+                              }
+                          }, Val);
+                  }
+              }
+              return returnString;
+          }
+
+          std::unordered_map <std::string,
+                                DInI::InISection> updatedSections;
     private: std::fstream _iniFile;
            std::string _filePath;
     };
