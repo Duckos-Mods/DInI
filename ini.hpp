@@ -8,6 +8,7 @@
 #include <tuple>
 #include <variant>
 #include <type_traits>
+#include <algorithm>
 
 
 /*
@@ -35,6 +36,7 @@ namespace DInI {
     #define DAPI inline
     namespace StringUtil {
         DAPI std::vector < std::string > explode(const std::string& data,
+            // Returns a vector of strings, That gets created from one string being split on every user defined character, EG split on spaces 
             const std::string& delimiters) {
             auto is_delim = [&](auto& c) {
                 return delimiters.find(c) != std::string::npos;
@@ -111,6 +113,7 @@ namespace DInI {
                       if (lastNonSpaceIndex != std::string::npos) {
                           trimmedKey = trimmedKey.substr(0, lastNonSpaceIndex + 1);
                       }
+                      std::remove(value.begin(), value.end(), ' ');
                       bool Array;
                       if (value[0] == '[' && value.back() == ']') {
                           Array = true;
