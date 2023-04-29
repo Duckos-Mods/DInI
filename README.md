@@ -4,7 +4,7 @@ DInI is a header only C++ ini parsing lib and is meant to make parsing ini files
 # DInI Features
   .Saving To An InI File  
   .Loading From An InI File  
-  .Comment Support (with the / or #)  
+  .Comment Support (with the ; or #)  
   .Array Support  
 # Docs
 
