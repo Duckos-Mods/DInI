@@ -113,7 +113,8 @@ namespace DInI {
                       if (lastNonSpaceIndex != std::string::npos) {
                           trimmedKey = trimmedKey.substr(0, lastNonSpaceIndex + 1);
                       }
-                      std::remove(value.begin(), value.end(), ' ');
+                      value.erase(std::remove(value.begin(), value.end(), ' '), value.end());
+                      
                       bool Array;
                       if (value[0] == '[' && value.back() == ']') {
                           Array = true;
